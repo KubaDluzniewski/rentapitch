@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Error 404 - Nie znaleziono strony</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f3f4f6;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+        .container {
+            text-align: center;
+        }
+        h1 {
+            font-size: 8rem;
+            font-weight: bold;
+            color: #1f2937;
+            margin: 0;
+        }
+        p {
+            font-size: 1.5rem;
+            color: #4b5563;
+            margin: 0.5rem 0;
+        }
+        a {
+            display: inline-block;
+            margin-top: 2rem;
+            padding: 0.75rem 1.5rem;
+            background-color: #3b82f6;
+            color: white;
+            text-decoration: none;
+            border-radius: 0.5rem;
+            font-weight: 600;
+            transition: background-color 0.3s;
+        }
+        a:hover {
+            background-color: #2563eb;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1>404</h1>
+    <p>Oops! Nie znaleziono strony.</p>
+    <p>Strona której szukasz została przeniesiona albo usunięta.</p>
+    <a href="{{ path('home') }}">Go Back Home</a>
+</div>
+</body>
+</html>

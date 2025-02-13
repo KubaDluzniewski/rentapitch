@@ -1,0 +1,333 @@
+{% extends 'base.html.twig' %}
+{% block stylesheets %}
+
+    <link href="https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.css" rel="stylesheet">
+    <style>
+        body, html {
+            height: 100%;
+            margin: 0;
+            font-family: 'Inter', sans-serif; /* Nowoczesna czcionka */
+            background: linear-gradient(-45deg, #f8f9fa, #e9ecef, #dee2e6, #ced4da);
+            background-size: 400% 400%;
+            animation: gradientBG 10s ease infinite;
+            color: #333;
+            line-height: 1.6;
+        }
+
+        @keyframes gradientBG {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        h1 {
+            color: #2c3e50;
+            font-weight: 600;
+            margin-bottom: 20px;
+        }
+
+        #calendar {
+            height: 80vh;
+            margin: 20px auto;
+            max-width: 1200px;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            padding: 20px;
+        }
+
+        .fc {
+            font-family: 'Inter', sans-serif;
+        }
+
+        .fc-header-toolbar {
+            margin-bottom: 20px;
+        }
+
+        .fc-toolbar-title {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: #2c3e50;
+        }
+
+        .fc-button {
+            background-color: #007bff;
+            border: none;
+            color: white;
+            border-radius: 5px;
+            padding: 8px 16px;
+            transition: background-color 0.3s ease, transform 0.3s ease;
+        }
+
+        .fc-button:hover {
+            background-color: #0056b3;
+            transform: translateY(-2px);
+        }
+
+        .fc-button-primary {
+            background-color: #007bff;
+        }
+
+        .fc-button-primary:hover {
+            background-color: #0056b3;
+        }
+
+        .fc-event {
+            background-color: #007bff;
+            border: none;
+            border-radius: 5px;
+            padding: 5px;
+            color: white;
+            cursor: pointer;
+            transition: background-color 0.3s ease, transform 0.3s ease;
+        }
+
+        .fc-event:hover {
+            background-color: #0056b3;
+            transform: translateY(-2px);
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0, 0, 0, 0.5);
+            padding-top: 60px;
+        }
+
+        .modal-content {
+            background-color: white;
+            margin: 5% auto;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+            width: 90%;
+            max-width: 500px;
+            animation: modalFadeIn 0.3s ease;
+        }
+
+        @keyframes modalFadeIn {
+            from { opacity: 0; transform: translateY(-20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .close {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: color 0.3s ease;
+        }
+
+        .close:hover,
+        .close:focus {
+            color: #333;
+        }
+
+        #reservationForm {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        #reservationForm input,
+        #reservationForm button {
+            padding: 10px;
+            border-radius: 5px;
+            border: 1px solid #ddd;
+            font-size: 1rem;
+        }
+
+        #reservationForm button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            cursor: pointer;
+            transition: background-color 0.3s ease, transform 0.3s ease;
+        }
+
+        #reservationForm button:hover {
+            background-color: #0056b3;
+            transform: translateY(-2px);
+        }
+
+        #selectedTimeRange {
+            font-size: 1.1rem;
+            color: #555;
+            margin-bottom: 10px;
+        }
+    </style>
+{% endblock %}
+
+{% block body %}
+    <h1>Rezerwacja: {{ pitch.name }}</h1>
+
+    <div id="calendar"></div>
+
+    <div id="myModal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2>Dodaj rezerwację</h2>
+            <p id="selectedTimeRange"></p>
+            <form id="reservationForm" method="POST" action="{{ path('reservation_create') }}">
+                <input type="hidden" id="start" name="start" required>
+                <input type="hidden" id="end" name="end" required>
+                <input type="hidden" name="pitch_id" value="{{ pitch.id }}">
+                <input type="hidden" name="_csrf_token" value="{{ csrf_token('authenticate') }}" />
+                <button type="submit">Dodaj</button>
+            </form>
+        </div>
+    </div>
+{% endblock %}
+
+{% block javascripts %}
+    <script src="https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/locales-all.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.6/dist/umd/popper.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/tippy.js@6.3.7/dist/tippy-bundle.umd.min.js"></script>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const calendarEl = document.getElementById('calendar');
+            const modal = document.getElementById('myModal');
+            const span = document.getElementsByClassName('close')[0];
+            const form = document.getElementById('reservationForm');
+
+            const eventsUrl = `/api/reservations/pitch/{{ pitch.id }}`;
+
+            const calendar = new FullCalendar.Calendar(calendarEl, {
+                allDaySlot: false,
+                eventColor: '#789AFC',
+                title: 'Rezerwacje',
+                slotMinTime: '08:00:00',
+                slotMaxTime: '22:00:00',
+                initialView: 'timeGridWeek',
+                locale: 'pl',
+                events: eventsUrl,
+                headerToolbar: {
+                    left: 'prev,next today',
+                    center: 'title',
+                    right: ''
+                },
+                selectable: true,
+                select: function(info) {
+                    const now = new Date();
+                    const selectedStart = new Date(info.startStr);
+                    const selectedEnd = new Date(info.endStr);
+
+                    if (selectedStart < now) {
+                        alert('Nie można wybrać przeszłej daty i godziny.');
+                        calendar.unselect();
+                        return;
+                    }
+
+                    const maxDuration = 4 * 60 * 60 * 1000;
+                    if (selectedEnd - selectedStart > maxDuration) {
+                        alert('Maksymalny czas rezerwacji to 4 godziny.');
+                        calendar.unselect();
+                        return;
+                    }
+
+                    const events = calendar.getEvents();
+
+                    const isOverlapping = events.some(event => {
+                        const eventStart = event.start.getTime();
+                        const eventEnd = event.end.getTime();
+                        return (selectedStart < eventEnd && selectedEnd > eventStart);
+                    });
+
+                    if (isOverlapping) {
+                        alert('Wybrany czas koliduje z istniejącą rezerwacją. Wybierz inny termin.');
+                        calendar.unselect();
+                        return;
+                    }
+
+
+                    const startDateTime = selectedStart.toLocaleString('pl-PL', {
+                        weekday: 'long',
+                        year: 'numeric',
+                        month: 'long',
+                        day: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                    });
+
+                    const endDateTime = selectedEnd.toLocaleString('pl-PL', {
+                        weekday: 'long',
+                        year: 'numeric',
+                        month: 'long',
+                        day: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                    });
+
+                    document.getElementById('start').value = info.startStr;
+                    document.getElementById('end').value = info.endStr;
+                    document.getElementById('selectedTimeRange').innerText = `Wybrany czas: ${startDateTime} - ${endDateTime}`;
+                    modal.style.display = 'block';
+                },
+
+                eventDidMount: function(info) {
+                    const user = info.event.extendedProps.user;
+                    const ownerId = info.event.extendedProps.ownerId;
+                    const currentUserId = window.currentUserId;
+
+                    if (currentUserId && currentUserId === ownerId) {
+                        const duration = (new Date(info.event.end).getTime() - new Date(info.event.start).getTime()) / 3600000;
+
+                        tippy(info.el, {
+                            content: `
+                        <strong>Imię i nazwisko:</strong> ${user.firstName} ${user.lastName}<br>
+                        <strong>Numer telefonu:</strong> ${user.phoneNumber}<br>
+                        <strong>Ilość godzin wynajmu:</strong> ${duration}
+                    `,
+                            allowHTML: true,
+                            placement: 'top',
+                            trigger: 'mouseenter',
+                        });
+                    }
+                }
+            });
+
+            calendar.render();
+
+            span.onclick = function() {
+                modal.style.display = 'none';
+            };
+
+            window.onclick = function(event) {
+                if (event.target === modal) {
+                    modal.style.display = 'none';
+                }
+            };
+
+            document.getElementById('reservationForm').addEventListener('submit', function(event) {
+                event.preventDefault();
+
+                const formData = new FormData(this);
+                fetch(this.action, {
+                    method: 'POST',
+                    body: formData,
+                })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            location.reload();
+                        } else {
+                            alert('Nie udało się utworzyć rezerwacji');
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Błąd:', error);
+                        alert('Wystąpił błąd podczas tworzenia rezerwacji');
+                    });
+            });
+        });
+    </script>
+{% endblock %}

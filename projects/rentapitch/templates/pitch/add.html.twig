@@ -1,0 +1,173 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Dodaj boisko{% endblock %}
+
+{% block body %}
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <style>
+        #map {
+            width: 100%;
+            height: 400px;
+            margin-bottom: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+        form {
+            max-width: 500px;
+            margin: auto;
+            padding: 20px;
+            background: #f9f9f9;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+        input, select, button {
+            width: 100%;
+            padding: 10px;
+            margin-top: 5px;
+            border-radius: 5px;
+            border: 1px solid #ccc;
+            font-size: 16px;
+        }
+        label {
+            font-weight: bold;
+            margin-top: 10px;
+            display: block;
+        }
+        .error {
+            border: 2px solid red !important;
+        }
+        .error-message {
+            color: red;
+            font-size: 14px;
+            display: none;
+            margin-top: 5px;
+        }
+        button {
+            background-color: #28a745;
+            color: white;
+            font-weight: bold;
+            cursor: pointer;
+            border: none;
+            transition: background 0.3s;
+        }
+        button:hover {
+            background-color: #218838;
+        }
+    </style>
+    <form method="POST" id="AddPitchForm">
+        <div id="map"></div>
+        <div>
+            <label for="location">Dokładny adres:</label>
+            <input type="text" id="location" name="location" required readonly>
+            <div id="locationErrorMessage" style="display: none;">Zaznacz prawidłową lokalizację.</div>
+        </div>
+        <div>
+            <label for="name">Nazwa boiska:</label>
+            <input type="text" id="name" name="name" required>
+            <span class="error-message">To pole jest wymagane.</span>
+        </div>
+        <div>
+            <label for="type">Typ boiska:</label>
+            <select id="type" name="type" required>
+                <option value="">Wybierz typ boiska</option>
+                <option value="Piłka nożna">Piłka nożna</option>
+                <option value="Koszykówka">Koszykówka</option>
+                <option value="Tenis">Tenis</option>
+            </select>
+            <span class="error-message">To pole jest wymagane.</span>
+        </div>
+        <div>
+            <label for="pricePerHour">Cena za godzinę:</label>
+            <input type="number" id="pricePerHour" name="pricePerHour" required>
+            <span class="error-message">To pole jest wymagane.</span>
+            <span id="errorMessage" style="color: red; display: none;">Cena jest zbyt wysoka!</span>
+        </div>
+        <div>
+            <input type="hidden" id="latitude" name="latitude" readonly>
+            <input type="hidden" id="longitude" name="longitude" readonly>
+        </div>
+        <button type="submit">Dodaj boisko</button>
+    </form>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            let map = L.map('map').setView([54.46405, 17.02872], 13);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '&copy; OpenStreetMap contributors'
+            }).addTo(map);
+
+            let marker;
+            const locationInput = document.getElementById('location');
+            const latitudeInput = document.getElementById('latitude');
+            const longitudeInput = document.getElementById('longitude');
+
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(function (position) {
+                    let lat = position.coords.latitude;
+                    let lng = position.coords.longitude;
+                    updateMapAndForm(lat, lng);
+                });
+            }
+
+            map.on('click', function (e) {
+                let lat = e.latlng.lat;
+                let lng = e.latlng.lng;
+                updateMapAndForm(lat, lng);
+            });
+
+            function updateMapAndForm(lat, lng) {
+                if (marker) {
+                    marker.setLatLng([lat, lng]);
+                } else {
+                    marker = L.marker([lat, lng]).addTo(map);
+                }
+                latitudeInput.value = lat;
+                longitudeInput.value = lng;
+                fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        locationInput.value = data.display_name || '';
+                    });
+            }
+
+            const form = document.getElementById('AddPitchForm');
+            form.addEventListener('submit', function(event) {
+                let isValid = true;
+
+                document.querySelectorAll('[required]').forEach(input => {
+                    if (!input.value.trim()) {
+                        isValid = false;
+                        input.classList.add('error');
+                        input.nextElementSibling.style.display = 'block';
+                    } else {
+                        input.classList.remove('error');
+                        input.nextElementSibling.style.display = 'none';
+                    }
+                });
+
+                if (!locationInput.value.trim()) {
+                    isValid = false;
+                    locationInput.classList.add('error');
+                    document.getElementById('locationErrorMessage').style.display = 'block';
+                } else {
+                    locationInput.classList.remove('error');
+                    document.getElementById('locationErrorMessage').style.display = 'none';
+                }
+
+                const priceInput = document.getElementById('pricePerHour');
+                if (parseFloat(priceInput.value) > 999999) {
+                    isValid = false;
+                    document.getElementById('errorMessage').style.display = 'block';
+                    priceInput.classList.add('error');
+                } else {
+                    document.getElementById('errorMessage').style.display = 'none';
+                    priceInput.classList.remove('error');
+                }
+
+                if (!isValid) {
+                    event.preventDefault();
+                }
+            });
+        });
+    </script>
+{% endblock %}

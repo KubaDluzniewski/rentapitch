@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Strona główna</title>
+    {% block stylesheets %}
+        <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+        <style>
+            .navbar {
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                background-color: #007bff;
+                padding: 10px 20px;
+                color: white;
+                z-index: 1000;
+                box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+                border-radius: 0 0 10px 10px;
+            }
+
+            .navbar a {
+                color: white;
+                text-decoration: none;
+                margin: 0 10px;
+                font-weight: bold;
+                transition: color 0.3s ease;
+            }
+
+            .navbar a:hover {
+                color: #ffdd57;
+                text-decoration: underline;
+            }
+
+            .navbar .nav-links {
+                display: flex;
+                align-items: center;
+            }
+
+            body {
+                margin-top: 60px;
+            }
+
+        </style>
+    {% endblock %}
+</head>
+<body>
+<div class="navbar">
+    <div class="nav-links">
+        <a href="{{ path('home') }}">Map</a>
+        <a href="{{ path('pitch_add') }}">Add Pitch</a>
+    </div>
+    {% if app.User %}
+        <a href="{{ path('app_logout') }}">Logout</a>
+    {% endif %}
+</div>
+{% block body %}{% endblock %}
+{% block javascripts %}
+{% endblock %}

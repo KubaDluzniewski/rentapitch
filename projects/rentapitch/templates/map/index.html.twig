@@ -1,0 +1,645 @@
+{% extends 'base.html.twig' %}
+
+{% block stylesheets %}
+    {{ parent() }}
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            margin: 0;
+            padding: 100px 0 0;
+            color: #333;
+            line-height: 1.6;
+            background: linear-gradient(-45deg, #f8f9fa, #e9ecef, #dee2e6, #ced4da);
+            background-size: 400% 400%;
+            animation: gradientBG 10s ease infinite;
+            min-height: 100vh;
+        }
+
+        @keyframes gradientBG {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        h2 {
+            color: #2c3e50;
+            margin-bottom: 20px;
+            font-weight: 600;
+        }
+
+        div[style*="display: flex"] {
+            padding: 20px;
+            gap: 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        #map {
+            height: 600px;
+            width: 60%;
+            border-radius: 15px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            border: 1px solid #ddd;
+            background: white;
+        }
+
+        #profile {
+            flex: 1;
+            padding: 20px;
+            border-radius: 15px;
+            background: white;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            border: 1px solid #ddd;
+        }
+
+        .user-profile {
+            display: flex;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .user-profile i {
+            margin-left: 10px;
+            color: #007bff;
+            cursor: pointer;
+            transition: color 0.3s ease;
+        }
+
+        .user-profile i:hover {
+            color: #0056b3;
+        }
+
+        #user-details p {
+            margin: 10px 0;
+            color: #555;
+        }
+
+        #recent-reservations {
+            margin-top: 20px;
+        }
+
+        #recent-reservations h4 {
+            margin-bottom: 10px;
+            color: #2c3e50;
+        }
+
+        #recent-reservations div {
+            border: 1px solid #ddd;
+            padding: 15px;
+            margin-bottom: 10px;
+            border-radius: 10px;
+            background: #f9f9f9;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        #recent-reservations div:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .btn {
+            display: inline-block;
+            padding: 10px 15px;
+            background-color: #007bff;
+            color: white;
+            border-radius: 5px;
+            text-decoration: none;
+            border: none;
+            cursor: pointer;
+            transition: background-color 0.3s ease, transform 0.3s ease;
+        }
+
+        .btn:hover {
+            background-color: #0056b3;
+            transform: translateY(-2px);
+        }
+
+        .btn-danger {
+            background-color: #dc3545;
+        }
+
+        .btn-danger:hover {
+            background-color: #c82333;
+        }
+
+        .btn-secondary {
+            background-color: #6c757d;
+        }
+
+        .btn-secondary:hover {
+            background-color: #5a6268;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0, 0, 0, 0.5);
+            padding-top: 60px;
+        }
+
+        .modal-content {
+            background-color: white;
+            margin: 5% auto;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+            width: 90%;
+            max-width: 400px;
+            animation: modalFadeIn 0.3s ease;
+        }
+
+        @keyframes modalFadeIn {
+            from { opacity: 0; transform: translateY(-20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .close {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: color 0.3s ease;
+        }
+
+        .close:hover,
+        .close:focus {
+            color: #333;
+        }
+
+        .stars i {
+            cursor: pointer;
+            font-size: 1.2rem;
+            color: #ffc107;
+            transition: color 0.3s ease;
+        }
+
+        .stars i:hover,
+        .stars i:hover ~ i {
+            color: #ffc107;
+        }
+
+        #delete-modal {
+            display: none;
+            position: fixed;
+            z-index: 2000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            justify-content: center;
+            align-items: center;
+        }
+
+        #delete-modal div {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            width: 300px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        #delete-modal p {
+            margin-bottom: 20px;
+            color: #555;
+        }
+
+        #delete-modal button {
+            margin: 0 10px;
+        }
+    </style>
+{% endblock %}
+{% block body %}
+<div id="delete-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.5); justify-content: center; align-items: center;">
+    <div style="background: white; padding: 20px; border-radius: 10px; text-align: center; width: 300px;">
+        <p>Czy na pewno chcesz usunąć tę rezerwację?</p>
+        <div style="margin-top: 20px;">
+            <button id="confirm-delete" class="btn btn-danger">Tak</button>
+            <button id="cancel-delete" class="btn btn-secondary">Nie</button>
+        </div>
+    </div>
+</div>
+<div style="display: flex; gap: 20px; padding: 20px;">
+    <!-- Lewa kolumna: mapa -->
+    <div id="map"></div>
+
+    <!-- Prawa kolumna: profil -->
+    <div id="profile" style="flex: 1; padding: 20px; border: 1px solid #ccc; border-radius: 15px;">
+        <h2>Profil użytkownika <i class="bi bi-gear" id="settingsIcon" style="cursor: pointer;"></i></h2>
+        <div id="user-details">
+            <p>Ładowanie danych użytkownika...</p>
+        </div>
+        <div id="recent-reservations">
+            <p>Brak rezerwacji do wyświetlenia.</p>
+        </div>
+    </div>
+</div>
+
+<div id="settingsModal" class="modal">
+    <div class="modal-content">
+        <span class="close">&times;</span>
+        <h2>Ustawienia konta</h2>
+        <button id="changePasswordButton">Zmień hasło</button>
+    </div>
+</div>
+{% endblock %}
+{% block javascripts %}
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const settingsModal = document.getElementById('settingsModal');
+        const settingsIcon = document.getElementById('settingsIcon');
+        const span = document.getElementsByClassName('close')[0];
+        const changePasswordButton = document.getElementById('changePasswordButton');
+        const deleteAccountButton = document.getElementById('deleteAccountButton');
+
+        settingsIcon.onclick = function() {
+            settingsModal.style.display = 'block';
+        };
+
+        span.onclick = function() {
+            settingsModal.style.display = 'none';
+        };
+
+        window.onclick = function(event) {
+            if (event.target === settingsModal) {
+                settingsModal.style.display = 'none';
+            }
+        };
+
+        document.querySelectorAll('.stars i').forEach(star => {
+            star.addEventListener('click', function () {
+                const reservationId = this.parentElement.dataset.reservationId;
+                const rating = this.dataset.value;
+                rateReservation(reservationId, rating);
+            });
+        });
+        changePasswordButton.onclick = function() {
+            const newPassword = prompt('Enter new password:');
+            if (newPassword) {
+                fetch('/api/change-password', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ newPassword }),
+                })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            alert('Password changed successfully.');
+                        } else {
+                            alert('Failed to change password: ' + data.message);
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error changing password:', error);
+                        alert('An error occurred while changing the password.');
+                    });
+            }
+        };
+    });
+    document.addEventListener('DOMContentLoaded', function() {
+        const settingsModal = document.getElementById('settingsModal');
+        const settingsIcon = document.getElementById('settingsIcon');
+        const span = document.getElementsByClassName('close')[0];
+
+        settingsIcon.onclick = function() {
+            settingsModal.style.display = 'block';
+        };
+
+        span.onclick = function() {
+            settingsModal.style.display = 'none';
+        };
+
+        window.onclick = function(event) {
+            if (event.target === settingsModal) {
+                settingsModal.style.display = 'none';
+            }
+        };
+    });
+    let reservationToDelete = null;
+
+    function confirmDelete(reservationId) {
+        reservationToDelete = reservationId;
+
+        const modal = document.getElementById('delete-modal');
+        modal.style.display = 'flex';
+    }
+
+    document.getElementById('cancel-delete').addEventListener('click', function () {
+        const modal = document.getElementById('delete-modal');
+        modal.style.display = 'none';
+        reservationToDelete = null;
+    });
+
+    document.getElementById('confirm-delete').addEventListener('click', function () {
+        if (reservationToDelete) {
+            fetch(`/api/reservations/${reservationToDelete}/delete`, {
+                method: 'DELETE',
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        alert('Rezerwacja została usunięta.');
+                        loadUserProfile(); // Odśwież profil użytkownika
+                    } else {
+                        alert(data.error || 'Wystąpił problem z usunięciem rezerwacji.');
+                    }
+                })
+                .catch(error => {
+                    console.error('Błąd podczas usuwania rezerwacji:', error);
+                })
+                .finally(() => {
+                    const modal = document.getElementById('delete-modal');
+                    modal.style.display = 'none';
+                    reservationToDelete = null;
+                });
+        }
+    });
+    let currentReservationsIndex = 3;
+
+    function loadUserProfile() {
+        fetch('/api/user-profile')
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    alert(data.error);
+                    return;
+                }
+                const userDetails = document.getElementById('user-details');
+                userDetails.innerHTML =
+                    `<p><strong>Imię:</strong> ${data.name}</p>
+                <p><strong>Nazwisko:</strong> ${data.surname}</p>
+                <p><strong>Email:</strong> ${data.email}</p>`;
+
+                const reservationsContainer = document.getElementById('recent-reservations');
+                let reservationsHtml = '';
+
+                if (data.currentReservations && data.currentReservations.length > 0) {
+                    reservationsHtml += '<h4>Aktualne rezerwacje</h4>';
+                    reservationsHtml += '<div id="current-reservations-list">';
+                    data.currentReservations.forEach(reservation => {
+                        reservationsHtml += `
+                        <div style="border: 1px solid #ccc; padding: 10px; margin-bottom: 10px; border-radius: 5px;">
+                            <p><strong>Boisko:</strong> ${reservation.pitchName}</p>
+                            <p><strong>Data:</strong> ${reservation.date}</p>
+                            <p><strong>Godzina:</strong> ${reservation.time}</p>
+                            <button class="btn btn-danger" onclick="confirmDelete(${reservation.id})">Usuń</button>
+                        </div>
+                    `;
+                    });
+                    reservationsHtml += '</div>';
+                    if (data.allCurrentReservations.length > 3) {
+                        reservationsHtml += '<button id="show-more-current">Pokaż więcej</button>';
+                    }
+                }
+
+                if (data.pastReservations && data.pastReservations.length > 0) {
+                    reservationsHtml += '<h4>Ostatnie rezerwacje</h4>';
+                    data.pastReservations.forEach(reservation => {
+                        reservationsHtml += `
+                        <div style="border: 1px solid #ccc; padding: 10px; margin-bottom: 10px; border-radius: 5px;">
+                            <p><strong>Boisko:</strong> ${reservation.pitchName}</p>
+                            <p><strong>Data:</strong> ${reservation.date}</p>
+                            <p><strong>Godzina:</strong> ${reservation.time}</p>
+                            <div>
+                                <strong>Oceń:</strong>
+                                <div class="stars" data-reservation-id="${reservation.id}">
+                                    ${renderRatingStars(reservation.rating || 0)}
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                    });
+                }
+
+                reservationsContainer.innerHTML = reservationsHtml;
+
+                document.querySelectorAll('.stars i').forEach(star => {
+                    star.addEventListener('click', function () {
+                        const reservationId = this.parentElement.dataset.reservationId;
+                        const rating = this.dataset.value;
+
+                        rateReservation(reservationId, rating);
+                    });
+                });
+
+                attachShowMoreButton(data.allCurrentReservations);
+            })
+            .catch(error => {
+                console.error('Błąd ładowania profilu użytkownika:', error);
+            });
+    }
+
+    function attachShowMoreButton(allCurrentReservations) {
+        const showMoreButton = document.getElementById('show-more-current');
+        if (showMoreButton) {
+            showMoreButton.addEventListener('click', function () {
+                showMoreCurrentReservations(allCurrentReservations);
+            });
+        }
+    }
+
+    function showMoreCurrentReservations(allCurrentReservations) {
+        const reservationsList = document.getElementById('current-reservations-list');
+        const nextReservations = allCurrentReservations.slice(currentReservationsIndex, currentReservationsIndex + 3);
+        let reservationsHtml = '';
+        nextReservations.forEach(reservation => {
+            reservationsHtml += `
+                <div style="border: 1px solid #ccc; padding: 10px; margin-bottom: 10px; border-radius: 5px;">
+                    <p><strong>Boisko:</strong> ${reservation.pitchName}</p>
+                    <p><strong>Data:</strong> ${reservation.date}</p>
+                    <p><strong>Godzina:</strong> ${reservation.time}</p>
+                    <button class="btn btn-danger" onclick="confirmDelete(${reservation.id})">Usuń</button>
+                </div>
+            `;
+        });
+        currentReservationsIndex += 3;
+        reservationsList.innerHTML += reservationsHtml;
+
+        if (currentReservationsIndex >= allCurrentReservations.length) {
+            document.getElementById('show-more-current').remove();
+        }
+    }
+
+    loadUserProfile();
+
+    document.addEventListener('DOMContentLoaded', function () {
+        fetch('/api/reservations/ratings')
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    data.ratings.forEach(rating => {
+                        const starsContainer = document.querySelector(`.stars[data-reservation-id="${rating.reservationId}"]`);
+                        if (starsContainer) {
+                            starsContainer.innerHTML = renderStars(rating.rating);
+                        }
+                    });
+                } else {
+                    console.error('Błąd podczas pobierania ocen:', data.error);
+                }
+            })
+            .catch(error => {
+                console.error('Błąd podczas pobierania ocen:', error);
+            });
+
+
+        document.querySelectorAll('.stars i').forEach(star => {
+            star.addEventListener('click', function () {
+                const reservationId = this.parentElement.dataset.reservationId;
+                const rating = this.dataset.value;
+                rateReservation(reservationId, rating);
+            });
+        });
+    });
+    function rateReservation(reservationId, rating) {
+        fetch(`/api/reservations/${reservationId}/rate`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ rating }),
+        })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert(data.message || 'Dziękujemy za ocenę!');
+                    const starsContainer = document.querySelector(`.stars[data-reservation-id="${reservationId}"]`);
+                    starsContainer.innerHTML = renderStars(rating);
+
+                    starsContainer.querySelectorAll('i').forEach(star => {
+                        star.addEventListener('click', function () {
+                            const reservationId = this.parentElement.dataset.reservationId;
+                            const rating = this.dataset.value;
+                            rateReservation(reservationId, rating);
+                        });
+                    });
+                } else {
+                    alert(data.error || 'Wystąpił problem z zapisaniem oceny.');
+                }
+            })
+            .catch(error => {
+                console.error('Błąd podczas oceniania rezerwacji:', error);
+            });
+    }
+
+    function renderRatingStars(rating) {
+        let starsHtml = '';
+        for (let i = 1; i <= 5; i++) {
+            if (i <= rating) {
+                starsHtml += `<i class="bi bi-star-fill text-warning" data-value="${i}"></i>`;
+            } else {
+                starsHtml += `<i class="bi bi-star text-warning" data-value="${i}"></i>`;
+            }
+        }
+        return starsHtml;
+    }
+
+    loadUserProfile();
+
+    function renderStars(rating) {
+        const fullStar = '<i class="bi bi-star-fill text-warning" data-value=""></i>';
+        const halfStar = '<i class="bi bi-star-half text-warning" data-value=""></i>';
+        const emptyStar = '<i class="bi bi-star text-warning" data-value=""></i>';
+
+        let stars = '';
+        for (let i = 1; i <= 5; i++) {
+            if (rating >= i) {
+                stars += fullStar.replace('data-value=""', `data-value="${i}"`); // Pełna gwiazdka
+            } else if (rating >= i - 0.5) {
+                stars += halfStar.replace('data-value=""', `data-value="${i}"`); // Połówka gwiazdki
+            } else {
+                stars += emptyStar.replace('data-value=""', `data-value="${i}"`); // Pusta gwiazdka
+            }
+        }
+        return stars;
+    }
+
+    function initializeMap(lat, lng) {
+        const map = L.map('map').setView([lat, lng], 13);
+
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19,
+            attribution: '© OpenStreetMap contributors'
+        }).addTo(map);
+
+        function createMarker(pitch) {
+            const marker = L.marker([pitch.lat, pitch.lng]).addTo(map);
+            let averageRating = 0;
+            if (pitch.reviews && pitch.reviews.length > 0) {
+                const totalRating = pitch.reviews.reduce((sum, review) => sum + review.rating, 0);
+                averageRating = totalRating / pitch.reviews.length;
+            }
+            let popupContent = `
+                <h4>${pitch.name}</h4>
+                <p>Typ boiska: ${pitch.type}</p>
+                <p>Cena za godzinę: ${pitch.pricePerHour} zł</p>
+                <p>Ocena: ${renderStars(averageRating)} ${averageRating}</p>
+                <p>Ilość recenzji: ${pitch.reviews ? pitch.reviews.length : 0}</p>
+            `;
+            if (pitch.description) {
+                popupContent += `<p>${pitch.description}</p>`;
+            }
+            if (pitch.id) {
+                popupContent += `
+                    <a href="#" class="btn" onclick="handleRentClick(${pitch.id})">Wypożycz</a>
+                `;
+            } else {
+                console.error('Brak ID dla boiska:', pitch);
+            }
+
+            marker.bindPopup(popupContent);
+
+            return marker;
+        }
+
+        fetch('/api/pitches')
+            .then(response => response.json())
+            .then(data => {
+                data.forEach(pitch => {
+                    createMarker(pitch);
+                });
+            })
+            .catch(error => {
+                console.error('Błąd ładowania danych boisk:', error);
+            });
+    }
+
+    function handleRentClick(pitchId) {
+        fetch('/api/check-auth')
+            .then(response => response.json())
+            .then(data => {
+                if (data.isAuthenticated) {
+                    window.location.href = `/pitches/rent/${pitchId}`;
+                } else {
+                    window.location.href = '/login';
+                }
+            })
+            .catch(error => {
+                console.error('Błąd sprawdzania autoryzacji:', error);
+            });
+    }
+    if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+            function(position) {
+                const latit = position.coords.latitude;
+                const longit = position.coords.longitude;
+                initializeMap(latit, longit);
+            },
+            function(error) {
+                initializeMap(54.46405, 17.02872);
+            }
+        );
+    } else {
+        initializeMap(54.46405, 17.02872);
+    }
+
+</script>
+{% endblock %}
